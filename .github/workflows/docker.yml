@@ -36,8 +36,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [server, web, browser, browser-chromium, browser-firefox, sparse]
+        image: [server, web, browser, sparse]
         platform: [linux/amd64, linux/arm64]
+        variant: [""]
         include:
           - image: server
             dockerfile: docker/Dockerfile.server
@@ -45,15 +46,32 @@ jobs:
             dockerfile: docker/Dockerfile.web
           - image: browser
             dockerfile: docker/Dockerfile.browser
-          - image: browser-chromium
-            dockerfile: docker/Dockerfile.browser-chromium
-          - image: browser-firefox
-            dockerfile: docker/Dockerfile.browser-firefox
           - image: sparse
             dockerfile: docker/Dockerfile.sparse
           - platform: linux/amd64
             runner: ubuntu-latest
           - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+          # Browser single-engine variants
+          - image: browser
+            variant: chromium
+            dockerfile: docker/Dockerfile.browser
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - image: browser
+            variant: chromium
+            dockerfile: docker/Dockerfile.browser
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+          - image: browser
+            variant: firefox
+            dockerfile: docker/Dockerfile.browser
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - image: browser
+            variant: firefox
+            dockerfile: docker/Dockerfile.browser
+            platform: linux/arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     steps:
@@ -91,6 +109,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve artifact key
+        id: resolve
+        run: |
+          VARIANT="${{ matrix.variant }}"
+          if [ -n "$VARIANT" ]; then
+            ARTIFACT_KEY="${{ matrix.image }}-${VARIANT}"
+          else
+            ARTIFACT_KEY="${{ matrix.image }}"
+          fi
+          echo "artifact_key=${ARTIFACT_KEY}" >> "$GITHUB_OUTPUT"
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v6
@@ -105,12 +134,13 @@ jobs:
             COMMIT_HASH=${{ github.sha }}
             VITE_API_URL=/api
             VITE_AGENT_URL=/agent
+            ${{ matrix.variant != '' && format('BROWSER_CORES={0}', matrix.variant) || '' }}
           cache-from: |
-            type=gha,scope=${{ matrix.image }}-${{ matrix.platform }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:buildcache-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+            type=gha,scope=${{ steps.resolve.outputs.artifact_key }}-${{ matrix.platform }}
+            type=registry,ref=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:buildcache-${{ steps.resolve.outputs.artifact_key }}-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
           cache-to: |
-            type=gha,scope=${{ matrix.image }}-${{ matrix.platform }},mode=max
-            ${{ env.PUSH == 'true' && format('type=registry,ref={0}/{1}/{2}:buildcache-{3},mode=max,compression=zstd', env.REGISTRY, github.repository_owner, matrix.image, matrix.platform == 'linux/amd64' && 'amd64' || 'arm64') || '' }}
+            type=gha,scope=${{ steps.resolve.outputs.artifact_key }}-${{ matrix.platform }},mode=max
+            ${{ env.PUSH == 'true' && format('type=registry,ref={0}/{1}/{2}:buildcache-{3}-{4},mode=max,compression=zstd', env.REGISTRY, github.repository_owner, matrix.image, steps.resolve.outputs.artifact_key, matrix.platform == 'linux/amd64' && 'amd64' || 'arm64') || '' }}
 
       - name: Export digest
         if: env.PUSH == 'true'
@@ -123,7 +153,7 @@ jobs:
         if: env.PUSH == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ matrix.image }}-${{ strategy.job-index }}
+          name: digests-${{ steps.resolve.outputs.artifact_key }}-${{ strategy.job-index }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -134,13 +164,31 @@ jobs:
     needs: build
     strategy:
       matrix:
-        image: [server, web, browser, browser-chromium, browser-firefox, sparse]
+        include:
+          - image: server
+            artifact_key: server
+            tag_prefix: ""
+          - image: web
+            artifact_key: web
+            tag_prefix: ""
+          - image: browser
+            artifact_key: browser
+            tag_prefix: ""
+          - image: browser
+            artifact_key: browser-chromium
+            tag_prefix: "chromium-"
+          - image: browser
+            artifact_key: browser-firefox
+            tag_prefix: "firefox-"
+          - image: sparse
+            artifact_key: sparse
+            tag_prefix: ""
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-${{ matrix.image }}-*
+          pattern: digests-${{ matrix.artifact_key }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -167,13 +215,13 @@ jobs:
             memohai/${{ matrix.image }}
             ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
-            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=${{ github.ref_name }}-dev,enable=${{ startsWith(github.ref, 'refs/heads/v') }}
-            type=raw,value=latest,enable=${{ github.event_name == 'release' || (startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-')) }}
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=raw,value=${{ matrix.tag_prefix }}dev,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ matrix.tag_prefix }}${{ github.ref_name }}-dev,enable=${{ startsWith(github.ref, 'refs/heads/v') }}
+            type=raw,value=${{ matrix.tag_prefix }}latest,enable=${{ github.event_name == 'release' || (startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-')) }}
+            type=ref,event=pr,prefix=${{ matrix.tag_prefix }}
+            type=semver,pattern=${{ matrix.tag_prefix }}{{version}}
+            type=semver,pattern=${{ matrix.tag_prefix }}{{major}}.{{minor}}
+            type=semver,pattern=${{ matrix.tag_prefix }}{{major}}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests

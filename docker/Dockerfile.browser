@@ -17,7 +17,8 @@ RUN cd apps/browser && bun run build
 
 FROM ubuntu:noble
 
-ENV BROWSER_CORES=chromium,firefox
+ARG BROWSER_CORES=chromium,firefox
+ENV BROWSER_CORES=${BROWSER_CORES}
 
 WORKDIR /app
 

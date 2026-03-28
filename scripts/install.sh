@@ -107,7 +107,7 @@ WORKSPACE="$WORKSPACE_DEFAULT"
 MEMOH_DATA_DIR="$MEMOH_DATA_DIR_DEFAULT"
 USE_CN_MIRROR="${USE_CN_MIRROR:-false}"
 USE_SPARSE="${USE_SPARSE:-false}"
-BROWSER_PROFILE="${BROWSER_PROFILE:-browser-chromium}"
+BROWSER_CORE="${BROWSER_CORE:-chromium}"
 
 if [ "$SILENT" = false ]; then
   echo "Configure Memoh (press Enter to use defaults):" > /dev/tty
@@ -165,9 +165,9 @@ if [ "$SILENT" = false ]; then
   printf "  Browser core [1]: " > /dev/tty
   read -r input < /dev/tty || true
   case "$input" in
-    2) BROWSER_PROFILE="browser-firefox" ;;
-    3) BROWSER_PROFILE="browser" ;;
-    *) BROWSER_PROFILE="browser-chromium" ;;
+    2) BROWSER_CORE="firefox" ;;
+    3) BROWSER_CORE="all" ;;
+    *) BROWSER_CORE="chromium" ;;
   esac
 
   echo "" > /dev/tty
@@ -206,9 +206,6 @@ if [ "$MEMOH_DOCKER_VERSION" != "latest" ]; then
     sed -i.bak "s|memohai/server:latest|memohai/server:${MEMOH_DOCKER_VERSION}|g" docker-compose.yml
     sed -i.bak "s|memohai/agent:latest|memohai/agent:${MEMOH_DOCKER_VERSION}|g" docker-compose.yml
     sed -i.bak "s|memohai/web:latest|memohai/web:${MEMOH_DOCKER_VERSION}|g" docker-compose.yml
-    sed -i.bak "s|memohai/browser-chromium:latest|memohai/browser-chromium:${MEMOH_DOCKER_VERSION}|g" docker-compose.yml
-    sed -i.bak "s|memohai/browser-firefox:latest|memohai/browser-firefox:${MEMOH_DOCKER_VERSION}|g" docker-compose.yml
-    sed -i.bak "s|memohai/browser:latest|memohai/browser:${MEMOH_DOCKER_VERSION}|g" docker-compose.yml
     sed -i.bak "s|memohai/sparse:latest|memohai/sparse:${MEMOH_DOCKER_VERSION}|g" docker-compose.yml
     rm -f docker-compose.yml.bak
     echo "${GREEN}✓ Docker images pinned to ${MEMOH_DOCKER_VERSION}${NC}"
@@ -232,8 +229,30 @@ export MEMOH_CONFIG=./config.toml
 export MEMOH_DATA_DIR
 mkdir -p "$MEMOH_DATA_DIR"
 
+# Resolve browser tag and cores from BROWSER_CORE selection
+case "$BROWSER_CORE" in
+  firefox)
+    BROWSER_TAG_SUFFIX="firefox-"
+    BROWSER_CORES="firefox"
+    ;;
+  all)
+    BROWSER_TAG_SUFFIX=""
+    BROWSER_CORES="chromium,firefox"
+    ;;
+  *)
+    BROWSER_TAG_SUFFIX="chromium-"
+    BROWSER_CORES="chromium"
+    ;;
+esac
+
+if [ "$MEMOH_DOCKER_VERSION" != "latest" ]; then
+  BROWSER_TAG="${BROWSER_TAG_SUFFIX}${MEMOH_DOCKER_VERSION}"
+else
+  BROWSER_TAG="${BROWSER_TAG_SUFFIX}latest"
+fi
+
 COMPOSE_FILES="-f docker-compose.yml"
-COMPOSE_PROFILES="--profile qdrant --profile $BROWSER_PROFILE"
+COMPOSE_PROFILES="--profile qdrant --profile browser"
 if [ "$USE_SPARSE" = true ]; then
   COMPOSE_PROFILES="$COMPOSE_PROFILES --profile sparse"
   echo "${GREEN}✓ Sparse memory service enabled${NC}"
@@ -249,7 +268,9 @@ echo POSTGRES_PASSWORD="${PG_PASS}" >> .env
 echo MEMOH_CONFIG=./config.toml >> .env
 echo MEMOH_DATA_DIR="${MEMOH_DATA_DIR}" >> .env
 echo USE_SPARSE="${USE_SPARSE}" >> .env
-echo "${GREEN}✓ Browser profile: ${BROWSER_PROFILE}${NC}"
+echo BROWSER_TAG="${BROWSER_TAG}" >> .env
+echo BROWSER_CORES="${BROWSER_CORES}" >> .env
+echo "${GREEN}✓ Browser: ${BROWSER_CORE} (image tag: ${BROWSER_TAG})${NC}"
 
 echo ""
 echo "${GREEN}Pulling Docker images...${NC}"

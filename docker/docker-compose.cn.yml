@@ -10,8 +10,4 @@ services:
   web:
     image: memoh.cn/memohai/web:latest
   browser:
-    image: memoh.cn/memohai/browser:latest
-  browser-chromium:
-    image: memoh.cn/memohai/browser-chromium:latest
-  browser-firefox:
-    image: memoh.cn/memohai/browser-firefox:latest
+    image: memoh.cn/memohai/browser:${BROWSER_TAG:-latest}

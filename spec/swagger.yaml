@@ -2398,6 +2398,8 @@ definitions:
         type: boolean
       compaction_model_id:
         type: string
+      compaction_ratio:
+        type: integer
       compaction_threshold:
         type: integer
       heartbeat_enabled:
@@ -2433,6 +2435,8 @@ definitions:
         type: boolean
       compaction_model_id:
         type: string
+      compaction_ratio:
+        type: integer
       compaction_threshold:
         type: integer
       heartbeat_enabled:

@@ -824,6 +824,8 @@
       "compactionEnabled": "启用上下文压缩",
       "compactionDescription": "上下文过大时自动摘要旧消息以节省 token",
       "compactionThreshold": "压缩阈值（输入 token 数）",
+      "compactionRatio": "压缩比例（%）",
+      "compactionRatioDescription": "压缩较旧消息的百分比，剩余的最近消息保持原始完整度。",
       "compactionModel": "压缩模型",
       "compactionModelDescription": "选择用于摘要的模型，未设置时默认使用聊天模型。",
       "compactionModelPlaceholder": "使用聊天模型（默认）",

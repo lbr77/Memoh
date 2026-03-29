@@ -1447,6 +1447,7 @@ export type SettingsSettings = {
     chat_model_id?: string;
     compaction_enabled?: boolean;
     compaction_model_id?: string;
+    compaction_ratio?: number;
     compaction_threshold?: number;
     heartbeat_enabled?: boolean;
     heartbeat_interval?: number;
@@ -1466,6 +1467,7 @@ export type SettingsUpsertRequest = {
     chat_model_id?: string;
     compaction_enabled?: boolean;
     compaction_model_id?: string;
+    compaction_ratio?: number;
     compaction_threshold?: number;
     heartbeat_enabled?: boolean;
     heartbeat_interval?: number;

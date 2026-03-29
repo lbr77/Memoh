@@ -828,6 +828,8 @@
       "compactionEnabled": "Enable Context Compaction",
       "compactionDescription": "Automatically summarize older messages when context gets too large",
       "compactionThreshold": "Compaction Threshold (input tokens)",
+      "compactionRatio": "Compaction Ratio (%)",
+      "compactionRatioDescription": "Percentage of older messages to compact. The remaining recent messages are kept intact.",
       "compactionModel": "Compaction Model",
       "compactionModelDescription": "Select a model for summarization. Defaults to the bot's chat model if not set.",
       "compactionModelPlaceholder": "Use chat model (default)",

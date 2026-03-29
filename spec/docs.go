@@ -12401,6 +12401,9 @@ const docTemplate = `{
                 "compaction_model_id": {
                     "type": "string"
                 },
+                "compaction_ratio": {
+                    "type": "integer"
+                },
                 "compaction_threshold": {
                     "type": "integer"
                 },
@@ -12453,6 +12456,9 @@ const docTemplate = `{
                 },
                 "compaction_model_id": {
                     "type": "string"
+                },
+                "compaction_ratio": {
+                    "type": "integer"
                 },
                 "compaction_threshold": {
                     "type": "integer"

@@ -29,6 +29,23 @@
           />
         </div>
         <div class="space-y-2">
+          <Label>{{ $t('bots.settings.compactionRatio') }}</Label>
+          <p class="text-xs text-muted-foreground mt-0.5">
+            {{ $t('bots.settings.compactionRatioDescription') }}
+          </p>
+          <div class="flex items-center gap-3">
+            <Slider
+              :model-value="[settingsForm.compaction_ratio]"
+              :min="1"
+              :max="100"
+              :step="1"
+              class="flex-1"
+              @update:model-value="(val) => settingsForm.compaction_ratio = val[0]"
+            />
+            <span class="text-sm text-muted-foreground w-10 text-right tabular-nums">{{ settingsForm.compaction_ratio }}%</span>
+          </div>
+        </div>
+        <div class="space-y-2">
           <Label>{{ $t('bots.settings.compactionModel') }}</Label>
           <p class="text-xs text-muted-foreground mt-0.5">
             {{ $t('bots.settings.compactionModelDescription') }}
@@ -254,7 +271,7 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import {
-  Button, Badge, Spinner, NativeSelect, Label, Switch, Input, Separator,
+  Button, Badge, Spinner, NativeSelect, Label, Switch, Input, Separator, Slider,
   Pagination, PaginationContent, PaginationEllipsis,
   PaginationFirst, PaginationItem, PaginationLast,
   PaginationNext, PaginationPrevious,
@@ -313,6 +330,7 @@ const providers = computed(() => providerData.value ?? [])
 const settingsForm = reactive({
   compaction_enabled: false,
   compaction_threshold: 100000,
+  compaction_ratio: 80,
   compaction_model_id: '',
 })
 
@@ -320,6 +338,7 @@ watch(settings, (val: SettingsSettings | undefined) => {
   if (val) {
     settingsForm.compaction_enabled = val.compaction_enabled ?? false
     settingsForm.compaction_threshold = val.compaction_threshold ?? 100000
+    settingsForm.compaction_ratio = val.compaction_ratio ?? 80
     settingsForm.compaction_model_id = val.compaction_model_id ?? ''
   }
 }, { immediate: true })
@@ -329,6 +348,7 @@ const settingsChanged = computed(() => {
   const s: SettingsSettings = settings.value
   return settingsForm.compaction_enabled !== (s.compaction_enabled ?? false)
     || settingsForm.compaction_threshold !== (s.compaction_threshold ?? 100000)
+    || settingsForm.compaction_ratio !== (s.compaction_ratio ?? 80)
     || settingsForm.compaction_model_id !== (s.compaction_model_id ?? '')
 })
 

@@ -79,6 +79,12 @@ func (s *Service) doCompaction(ctx context.Context, logID pgtype.UUID, sessionUU
 		return nil
 	}
 
+	toCompact := splitByRatio(messages, cfg.TotalInputTokens, cfg.Ratio)
+	if len(toCompact) == 0 {
+		s.completeLog(ctx, logID, "ok", "", "", nil, pgtype.UUID{})
+		return nil
+	}
+
 	priorLogs, err := s.queries.ListCompactionLogsBySession(ctx, sessionUUID)
 	if err != nil {
 		return err
@@ -90,9 +96,9 @@ func (s *Service) doCompaction(ctx context.Context, logID pgtype.UUID, sessionUU
 		}
 	}
 
-	entries := make([]messageEntry, 0, len(messages))
-	messageIDs := make([]pgtype.UUID, 0, len(messages))
-	for _, m := range messages {
+	entries := make([]messageEntry, 0, len(toCompact))
+	messageIDs := make([]pgtype.UUID, 0, len(toCompact))
+	for _, m := range toCompact {
 		entries = append(entries, messageEntry{
 			Role:    m.Role,
 			Content: extractTextContent(m.Content),
@@ -257,4 +263,50 @@ func extractTextContent(content []byte) string {
 
 func joinTexts(parts []string) string {
 	return strings.Join(parts, " ")
+}
+
+// splitByRatio splits messages so that roughly the first ratio% (by token weight)
+// are returned for compaction, and the rest are kept as-is.
+// When ratio >= 100 or totalInputTokens <= 0, all messages are returned.
+func splitByRatio(messages []sqlc.ListUncompactedMessagesBySessionRow, totalInputTokens, ratio int) []sqlc.ListUncompactedMessagesBySessionRow {
+	if ratio >= 100 || ratio <= 0 || totalInputTokens <= 0 || len(messages) == 0 {
+		return messages
+	}
+
+	keepTokens := totalInputTokens * (100 - ratio) / 100
+	if keepTokens <= 0 {
+		return messages
+	}
+
+	accumulated := 0
+	cutoff := len(messages)
+	for i := len(messages) - 1; i >= 0; i-- {
+		accumulated += estimateRowTokens(messages[i])
+		if accumulated >= keepTokens {
+			cutoff = i + 1
+			break
+		}
+	}
+
+	if cutoff <= 0 {
+		return nil
+	}
+	if cutoff >= len(messages) {
+		return messages
+	}
+	return messages[:cutoff]
+}
+
+type usagePayload struct {
+	OutputTokens *int `json:"output_tokens"`
+}
+
+func estimateRowTokens(m sqlc.ListUncompactedMessagesBySessionRow) int {
+	if len(m.Usage) > 0 {
+		var u usagePayload
+		if json.Unmarshal(m.Usage, &u) == nil && u.OutputTokens != nil && *u.OutputTokens > 0 {
+			return *u.OutputTokens
+		}
+	}
+	return len(m.Content) / 4
 }

@@ -70,7 +70,8 @@
     "platform": "Platform",
     "usage": "Usage",
     "browser": "Browser",
-    "supermarket": "Supermarket"
+    "supermarket": "Supermarket",
+    "about": "About"
   },
   "breadcrumb": {
     "main": "Home"
@@ -127,6 +128,18 @@
     "version": "Version",
     "versionTag": "v{version}",
     "commitHash": "Commit"
+  },
+  "about": {
+    "checkForUpdates": "Check for Updates",
+    "checking": "Checking...",
+    "upToDate": "You are up to date",
+    "newVersionAvailable": "New version available: v{version}",
+    "releaseNotes": "Release Notes",
+    "viewOnGitHub": "View on GitHub",
+    "checkFailed": "Failed to check for updates",
+    "github": "GitHub",
+    "docs": "Docs",
+    "feedback": "Feedback"
   },
   "chat": {
     "greeting": "Hi! How can I help you today?",
